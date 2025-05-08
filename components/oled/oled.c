@@ -12,7 +12,7 @@ uint8_t CMD_MODE = 0x00;
 uint8_t DAT_MODE = 0x40;
 
 static i2c_master_dev_handle_t oled_handle;
-
+//*初始化
 i2c_master_bus_handle_t i2c_init(void) // I2C总线初始化
 {
     ESP_LOGI("init", "初始化 I2C 总线"); // 打印日志 在串口
@@ -34,14 +34,15 @@ i2c_master_dev_handle_t OLED_ADD_BUS(i2c_master_bus_handle_t i2c_bus) // 添加O
     i2c_device_config_t oled_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = 0x3C,
-        .scl_speed_hz = 100 * 1000,
+        .scl_speed_hz = 400 * 1000,
     };
     ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus, &oled_cfg, &oled_handle));
     return oled_handle;
 }
 
-void OLED_Init(i2c_master_dev_handle_t oled_handle)
+void OLED_Init()
 {
+    i2c_master_dev_handle_t oled_handle = OLED_ADD_BUS(i2c_init());
     vTaskDelay(100 / portTICK_PERIOD_MS);
     uint8_t oled_buffer[28] = {
         0xAE, 0x20, 0x10, 0xb0, 0xc8, 0x00, 0x10,
@@ -51,7 +52,7 @@ void OLED_Init(i2c_master_dev_handle_t oled_handle)
     i2c_master_transmit_multi_buffer_info_t oled_transmit = {.write_buffer = oled_buffer, .buffer_size = 28};
     i2c_master_multi_buffer_transmit(oled_handle, &oled_transmit, 1, -1);
 }
-
+//*执行
 void WriteCmd(uint8_t cmd) // 写命令
 {
     uint8_t cmd_buf[2] = {0x00, cmd};
@@ -63,7 +64,7 @@ void WriteDat(uint8_t dat) // 写数据
     uint8_t dat_buf[2] = {0x40, dat};
     i2c_master_transmit(oled_handle, dat_buf, 2, -1);
 }
-
+//*功能
 void OLED_SetPos(uint8_t x, uint8_t y) // 设置起始点坐标
 {
     WriteCmd(0xb0 + y);
@@ -86,11 +87,12 @@ void OLED_Fill(uint8_t fill_Data) // 全屏填充
     }
 }
 
+//*接口
 void OLED_CLS(void) // 清屏
 {
     OLED_Fill(0x00);
 }
-
+//? Y 0~7行，X 0~127列（左右空1px共21列） 偏移
 void OLED_ShowStr(uint8_t x, uint8_t y, char ch[], uint8_t TextSize)
 {
     uint8_t c = 0, i = 0, j = 0;
@@ -136,4 +138,25 @@ void OLED_ShowStr(uint8_t x, uint8_t y, char ch[], uint8_t TextSize)
     }
     break;
     }
+}
+
+void OLED_UI(void)
+{
+    OLED_CLS();
+    // 静态显示
+    OLED_ShowStr(1, 0, "CO:", 1);
+    OLED_ShowStr(1, 1, "PM2.5:", 1);
+    OLED_ShowStr(1, 2, "CH2O:", 1);
+    OLED_ShowStr(1, 3, "temperature:", 1);
+    OLED_ShowStr(1, 4, "humidity:", 1);
+    OLED_ShowStr(1, 6, "FAN:", 1);
+    // 动态显示
+    OLED_ShowStr(91, 0, "___._", 1);
+    OLED_ShowStr(91, 1, "___._", 1);
+    OLED_ShowStr(91, 2, "___._", 1);
+    OLED_ShowStr(91, 3, "--", 1);
+    OLED_ShowStr(91, 4, "--", 1);
+    OLED_ShowStr(91, 6, "N/A", 1);
+    // 状态栏
+    OLED_ShowStr(37, 7, "AUTO MODE", 1);
 }

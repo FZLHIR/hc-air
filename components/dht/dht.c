@@ -257,3 +257,10 @@ esp_err_t dht_read_float_data(dht_sensor_type_t sensor_type, gpio_num_t pin,
 
     return ESP_OK;
 }
+
+//自定义函数
+//dth11精度为1度无需浮点
+esp_err_t dht11_read_data(int16_t *humidity, int16_t *temperature)
+{
+    return dht_read_data(DHT_TYPE_DHT11, GPIO_NUM_47, humidity, temperature);
+}

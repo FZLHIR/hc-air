@@ -4,60 +4,88 @@
 #include "esp_log.h"
 
 #include "driver/gpio.h"
-#include "driver/uart.h"
-#include "freertos/task.h"
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 
-#define UART_PORT_NUM UART_NUM_0
-#define UART_BAUD_RATE (9600)
-#define UART_TX_GPIO_NUM (GPIO_NUM_16)
-#define UART_RX_GPIO_NUM (GPIO_NUM_17)
-#define UART_BUF_SIZE (9)
-#define UART_TASK_STACK_SIZE 128
-#define UART_TASK_PRIORITY 10
+#define PM25_ADC ADC_CHANNEL_3
+#define PM25_PIN GPIO_NUM_1
+#define CO_ADC ADC_CHANNEL_2 // adc2
+#define CO_PIN GPIO_NUM_14
+#define CH2O_ADC ADC_CHANNEL_6 // adc2
+#define CH2O_PIN GPIO_NUM_16
 
-static const char *TAG = "CH2O";
+static const char *TAG = "传感器";
+static int adc_raw[4];
+static int voltage[4];
 
-static int8_t data[UART_BUF_SIZE + 1] = {0};
-// 串口读取任务
-static void CH2O_read(void *arg)
+static adc_oneshot_unit_handle_t adc1_handle;
+static adc_oneshot_unit_handle_t adc2_handle;
+static adc_cali_handle_t adc1_cali_PM25_handle = NULL;
+static adc_cali_handle_t adc2_cali_CO_handle = NULL;
+static adc_cali_handle_t adc2_cali_CH2O_handle = NULL;
+void Sensor_init(void)
 {
-    while (1)
-    {
-        // 读取接收到的数据
-        int len = uart_read_bytes(UART_PORT_NUM, &data, UART_BUF_SIZE, 1100 / portTICK_PERIOD_MS);
-        if (len > 0)
-        {
-            data[len] = '\0';
-            ESP_LOGI(TAG, "接收到数据: %s", data);
-        }
-        else
-            ESP_LOGW(TAG, "接收超时");
-    }
+    // ADC1初始化
+    adc_oneshot_unit_init_cfg_t init_config1 = {
+        .unit_id = ADC_UNIT_1,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+
+    adc_oneshot_chan_cfg_t config = {
+        .atten = ADC_ATTEN_DB_12,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, PM25_ADC, &config));
+
+    adc_cali_curve_fitting_config_t cali_config = {
+        .unit_id = ADC_UNIT_1,
+        .chan = PM25_ADC,
+        .atten = ADC_ATTEN_DB_12,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&cali_config, &adc1_cali_PM25_handle));
+
+    // ADC2初始化
+    adc_oneshot_unit_init_cfg_t init_config2 = {
+        .unit_id = ADC_UNIT_2,
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config2, &adc2_handle));
+
+    cali_config.unit_id = ADC_UNIT_2;
+    cali_config.chan = CO_ADC;
+    ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&cali_config, &adc2_cali_CO_handle));
+    cali_config.chan = CH2O_ADC;
+    ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&cali_config, &adc2_cali_CH2O_handle));
+
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, CO_ADC, &config));   // 示例后置
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, CH2O_ADC, &config)); // 示例后置
+}
+
+int8_t PM25_get_data(void)
+{
+    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, PM25_ADC, &adc_raw[0]));
+    ESP_LOGI(TAG, "PM25 ADC 原始值:  %d", adc_raw[0]);
+    ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc1_cali_PM25_handle, adc_raw[0], &voltage[0]));
+    ESP_LOGI(TAG, "PM25 电压值: %d mV", voltage[0]);
+    vTaskDelay(pdMS_TO_TICKS(10));
+}
+
+int8_t CO_get_data(void)
+{
+    ESP_ERROR_CHECK(adc_oneshot_read(adc2_handle, CO_ADC, &adc_raw[1]));
+    ESP_LOGI(TAG, "CO ADC 原始值:  %d", adc_raw[1]);
+    ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc2_cali_CO_handle, adc_raw[1], &voltage[1]));
+    ESP_LOGI(TAG, "CO 电压值: %d mV", voltage[1]);
+    vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 int8_t CH2O_get_data(void)
 {
-    return data[2];
-}
-
-void CH2O_init(void)
-{
-    // UART配置结构体
-    uart_config_t uart_config = {
-        .source_clk = UART_SCLK_APB,
-        .baud_rate = UART_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-    };
-
-    // 安装UART驱动并配置参数
-    ESP_ERROR_CHECK(uart_driver_install(UART_PORT_NUM, UART_BUF_SIZE * 2, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(UART_PORT_NUM, &uart_config));
-
-    // 设置UART的GPIO引脚
-    ESP_ERROR_CHECK(uart_set_pin(UART_PORT_NUM, UART_TX_GPIO_NUM, UART_RX_GPIO_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-
-    // 创建串口读取任务
-    xTaskCreate(CH2O_read, "CH2O_read_task", UART_TASK_STACK_SIZE, NULL, UART_TASK_PRIORITY, NULL);
+    ESP_ERROR_CHECK(adc_oneshot_read(adc2_handle, CH2O_ADC, &adc_raw[2]));
+    ESP_LOGI(TAG, "CH2O ADC 原始值:  %d", adc_raw[2]);
+    ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc2_cali_CH2O_handle, adc_raw[2], &voltage[2]));
+    ESP_LOGI(TAG, "CH2O 电压值: %d mV", voltage[2]);
+    vTaskDelay(pdMS_TO_TICKS(10));
 }

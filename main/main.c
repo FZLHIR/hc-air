@@ -4,21 +4,19 @@
 
 #include "oled.h"
 #include "rgb.h"
-#include "led_strip.h"
+#include "Sensor.h"
+#include "data.h"
+#include "fan.h"
 void app_main(void)
 {
     OLED_Init();
     OLED_UI();
-
-
-    led_strip_handle_t led_strip = configure_led_strip();
-
+    Sensor_init();
+    fan_init();
     while (1)
     {
-
-        set_led_colors(led_strip);
+        data_comp();
         ESP_LOGI("测试", "打印");
         vTaskDelay(1000 / portTICK_PERIOD_MS); // 1000即延时1s
-        
-    }
+        }
 }

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "CH2O.h"
+#include "Sensor.h"
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 
@@ -16,14 +16,16 @@
 #define CH2O_PIN GPIO_NUM_16
 
 static const char *TAG = "传感器";
-static int adc_raw[4];
-static int voltage[4];
+static int original_data[2][4]={{0},{0}};
+static int adc_raw[4]={0};
+static int voltage[4]={0};
 
 static adc_oneshot_unit_handle_t adc1_handle;
 static adc_oneshot_unit_handle_t adc2_handle;
 static adc_cali_handle_t adc1_cali_PM25_handle = NULL;
 static adc_cali_handle_t adc2_cali_CO_handle = NULL;
 static adc_cali_handle_t adc2_cali_CH2O_handle = NULL;
+
 void Sensor_init(void)
 {
     // ADC1初始化
@@ -63,29 +65,49 @@ void Sensor_init(void)
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, CH2O_ADC, &config)); // 示例后置
 }
 
-int8_t PM25_get_data(void)
+// TODO: 电压数据转换为实际单位数据
+float PM25_get_data(void)
 {
     ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, PM25_ADC, &adc_raw[0]));
     ESP_LOGI(TAG, "PM25 ADC 原始值:  %d", adc_raw[0]);
     ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc1_cali_PM25_handle, adc_raw[0], &voltage[0]));
     ESP_LOGI(TAG, "PM25 电压值: %d mV", voltage[0]);
+    float pm25 = 0.0;
     vTaskDelay(pdMS_TO_TICKS(10));
+    return pm25;
 }
 
-int8_t CO_get_data(void)
+float CO_get_data(void)
 {
     ESP_ERROR_CHECK(adc_oneshot_read(adc2_handle, CO_ADC, &adc_raw[1]));
     ESP_LOGI(TAG, "CO ADC 原始值:  %d", adc_raw[1]);
     ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc2_cali_CO_handle, adc_raw[1], &voltage[1]));
     ESP_LOGI(TAG, "CO 电压值: %d mV", voltage[1]);
+    float co = 0.0;
     vTaskDelay(pdMS_TO_TICKS(10));
+    return co;
 }
 
-int8_t CH2O_get_data(void)
+float CH2O_get_data(void)
 {
     ESP_ERROR_CHECK(adc_oneshot_read(adc2_handle, CH2O_ADC, &adc_raw[2]));
     ESP_LOGI(TAG, "CH2O ADC 原始值:  %d", adc_raw[2]);
     ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc2_cali_CH2O_handle, adc_raw[2], &voltage[2]));
     ESP_LOGI(TAG, "CH2O 电压值: %d mV", voltage[2]);
+    float ch2o = 0.0;
     vTaskDelay(pdMS_TO_TICKS(10));
+    return ch2o;
+}
+
+int (*get_original_data(void))[4]
+{
+    original_data[0][0] = adc_raw[0];
+    original_data[0][1] = adc_raw[1];
+    original_data[0][2] = adc_raw[2];
+    original_data[0][3] = adc_raw[3];
+    original_data[1][0] = voltage[0];
+    original_data[1][1] = voltage[1];
+    original_data[1][2] = voltage[2];
+    original_data[1][3] = voltage[3];
+    return original_data;
 }

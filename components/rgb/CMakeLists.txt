@@ -1,3 +1,7 @@
-idf_component_register(SRCS "rgb.c"
+file(GLOB_RECURSE SOURCES ./led_strip/src/*.c)
+
+idf_component_register(SRCS "rgb.c" ${SOURCES}
                     INCLUDE_DIRS "include"
-                    REQUIRES driver led_strip)
+                                 "./led_strip/include"
+                                 "./led_strip/interface"
+                    REQUIRES driver)

@@ -94,7 +94,7 @@ extern "C"
                                       float *humidity, float *temperature);
 
         // 自定义函数 DHT11 读取数据
-        esp_err_t dht11_read_data(int16_t *humidity, int16_t *temperature);
+        esp_err_t dht11_read_data(int *humidity, int *temperature);
 
 #ifdef __cplusplus
 }

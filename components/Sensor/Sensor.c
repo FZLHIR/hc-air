@@ -7,6 +7,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
+#include <math.h>
 
 #define PM25_ADC ADC_CHANNEL_3
 #define PM25_PIN GPIO_NUM_1
@@ -16,9 +17,9 @@
 #define CH2O_PIN GPIO_NUM_16
 
 static const char *TAG = "传感器";
-static int original_data[2][4]={{0},{0}};
-static int adc_raw[4]={0};
-static int voltage[4]={0};
+static int original_data[2][4] = {{0}, {0}};
+static int adc_raw[4] = {0};
+static int voltage[4] = {0};
 
 static adc_oneshot_unit_handle_t adc1_handle;
 static adc_oneshot_unit_handle_t adc2_handle;
@@ -65,14 +66,22 @@ void Sensor_init(void)
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, CH2O_ADC, &config)); // 示例后置
 }
 
-// TODO: 电压数据转换为实际单位数据
+float ppm(float V)
+{
+    float Vol = (V * 5 / 4096) * 1.0;
+    float RS = (5 - Vol) / (Vol * 0.5);
+    float R0 = 6.64;
+    float ppm = powf(11.5428 * R0 / RS, 0.6549f);
+    return ppm;
+}
+
 float PM25_get_data(void)
 {
     ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, PM25_ADC, &adc_raw[0]));
     ESP_LOGI(TAG, "PM25 ADC 原始值:  %d", adc_raw[0]);
     ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc1_cali_PM25_handle, adc_raw[0], &voltage[0]));
     ESP_LOGI(TAG, "PM25 电压值: %d mV", voltage[0]);
-    float pm25 = 0.0;
+    float pm25 = (float)voltage[0] * (float).001 * (float).17 - (float).1;
     vTaskDelay(pdMS_TO_TICKS(10));
     return pm25;
 }
@@ -83,7 +92,8 @@ float CO_get_data(void)
     ESP_LOGI(TAG, "CO ADC 原始值:  %d", adc_raw[1]);
     ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc2_cali_CO_handle, adc_raw[1], &voltage[1]));
     ESP_LOGI(TAG, "CO 电压值: %d mV", voltage[1]);
-    float co = 0.0;
+
+    float co = ppm(voltage[1]);
     vTaskDelay(pdMS_TO_TICKS(10));
     return co;
 }
@@ -94,7 +104,7 @@ float CH2O_get_data(void)
     ESP_LOGI(TAG, "CH2O ADC 原始值:  %d", adc_raw[2]);
     ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc2_cali_CH2O_handle, adc_raw[2], &voltage[2]));
     ESP_LOGI(TAG, "CH2O 电压值: %d mV", voltage[2]);
-    float ch2o = 0.0;
+    float ch2o = ppm(voltage[2]);
     vTaskDelay(pdMS_TO_TICKS(10));
     return ch2o;
 }

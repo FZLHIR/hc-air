@@ -35,7 +35,7 @@ void set_RGB_colors(int gear) // 设定led模式（绿/白/红）
 {
     switch (gear)
     {
-    case 1:
+    case 0:
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 0, 0, 2, 0));
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 1, 0, 2, 0));
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 2, 0, 2, 0));
@@ -43,7 +43,7 @@ void set_RGB_colors(int gear) // 设定led模式（绿/白/红）
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 4, 0, 2, 0));
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 5, 0, 2, 0));
         break;
-    case 2:
+    case 1:
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 0, 2, 2, 2));
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 1, 2, 2, 2));
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 2, 2, 2, 2));
@@ -51,7 +51,7 @@ void set_RGB_colors(int gear) // 设定led模式（绿/白/红）
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 4, 2, 2, 2));
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 5, 2, 2, 2));
         break;
-    case 3:
+    case 2:
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 0, 2, 0, 0));
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 1, 2, 0, 0));
         ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 2, 2, 0, 0));

@@ -195,12 +195,13 @@ void OLED_refresh(EnvironmentalData Sensor_data)
 
 void OLED_refresh_sp(void)
 {
-    OLED_ShowStr(91, 0, "     ", 1);
-    OLED_ShowStr(91, 1, "     ", 1);
-    OLED_ShowStr(91, 2, "     ", 1);
+    OLED_ShowStr(91, 0, "      ", 1);
+    OLED_ShowStr(91, 1, "      ", 1);
+    OLED_ShowStr(91, 2, "      ", 1);
     OLED_ShowStr(91, 3, "  ", 1);
     OLED_ShowStr(91, 4, "  ", 1);
 }
+
 void status_update(SystemStatus status)
 {
     switch (status)
@@ -237,6 +238,9 @@ void status_update(SystemStatus status)
         break;
     case 10:
         OLED_ShowStr(16, 7, "SENSOR_DHT_FAULT", 1);
+        break;
+    case 11:
+        OLED_ShowStr(0, 7, "                     ", 1);
         break;
     default:
         break;

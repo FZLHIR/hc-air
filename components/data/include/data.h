@@ -1,6 +1,7 @@
 #ifndef DATA_H
 #define DATA_H
-typedef struct 
+#include "stdbool.h"
+typedef struct
 {
     float co;        // 一氧化碳浓度(ppm)
     float ch2o;      // 甲醛浓度(ppm)
@@ -8,7 +9,7 @@ typedef struct
     int temperature; // 温度(℃)
     int humidity;    // 湿度(%RH)
     int fan_mode;    // 风扇模式挡位
-}EnvironmentalData;
+} EnvironmentalData;
 
 typedef enum
 {
@@ -23,8 +24,12 @@ typedef enum
     SENSOR_CH2O_FAULT,   // 甲醛传感器异常
     SENSOR_PM25_FAULT,   // PM2.5传感器异常
     SENSOR_DHT_FAULT,    // 温湿度传感器异常
+    NONE,                // 无状态
 } SystemStatus;
 
 void data_comp(void);
-
+void state_control(SystemStatus state, bool onf);
+void state_set_init(void);
+void auto_control(void);
+bool fan_control(int fan_mode);
 #endif /* DATA_H */

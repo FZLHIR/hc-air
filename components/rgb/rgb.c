@@ -8,7 +8,7 @@
 
 // 定义 RMT 参数
 #define LED_STRIP_RMT_RES_HZ 10*1000*1000 // 10MHz 分辨率
-#define LED_GPIO_NUM 21               // 数据引脚
+#define LED_GPIO_NUM GPIO_NUM_15               // 数据引脚
 
 static led_strip_handle_t led_strip;
 

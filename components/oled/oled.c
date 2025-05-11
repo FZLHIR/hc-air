@@ -7,9 +7,9 @@
 #include "codetab.h"
 #include "data.h"
 
-#define I2C_HOST I2C_NUM_0
-#define SDA_pin GPIO_NUM_42
-#define SCL_pin GPIO_NUM_41
+#define I2C_HOST I2C_NUM_1
+#define SDA_pin GPIO_NUM_46
+#define SCL_pin GPIO_NUM_3
 
 static i2c_master_dev_handle_t oled_handle;
 
@@ -207,7 +207,7 @@ void status_update(SystemStatus status)
     switch (status)
     {
     case 0:
-        OLED_ShowStr(40, 7, "SYS_init", 1);
+        OLED_ShowStr(34, 7, " SYS_init ", 1);
         break;
     case 1:
         OLED_ShowStr(26, 7, "WLAN_connect", 1);

@@ -1,1 +1,1 @@
-void func(void);
+void btn_init(void);

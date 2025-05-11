@@ -14,23 +14,44 @@ static EnvironmentalData env_data = {0};
 static bool auto_select = true;
 static bool health = true;
 static uint16_t active_states = 0;
+
+void auto_control(void); // 定义在调用后方的函数要预声明
+void rgb_update(void);
+void state_control(SystemStatus state, bool onf);
+void error_check(void);
+
 void data_comp(void)
 {
     env_data.co = CO_get_data();
     env_data.ch2o = CH2O_get_data();
-    env_data.pm25 = PM25_get_data();
+    if (0) // 手动切换
+        env_data.pm25 = PM25_get_data();
+    else
+        env_data.pm25 = pm25_get_data_uart();
+
     dht11_read_data(&env_data.humidity, &env_data.temperature);
     env_data.fan_mode = fan_get_mode();
     ESP_LOGD("数据处理", "PM2.5:%.2f ug/m3\nCO:%.2f ppm\nCH2O:%.2f ppm\nTemperature:%d C\nHumidity:%d %%RH\nFan mode:%d", env_data.pm25, env_data.co, env_data.ch2o, env_data.temperature, env_data.humidity, env_data.fan_mode);
     static bool i = true;
     if (i)
     {
+        rgb_update();
         OLED_refresh_sp();
         i = false;
     }
     OLED_refresh(env_data);
+    error_check();
     if (auto_select)
         auto_control();
+    static bool last_auto_select = true;
+    static bool last_health = true;
+    ESP_LOGI("自动控制", "自动模式:%d 健康状态:%d", auto_select, health);
+    if (auto_select != last_auto_select || health != last_health)
+    {
+        last_auto_select = auto_select;
+        last_health = health;
+        rgb_update();
+    }
 }
 
 void state_control(SystemStatus state, bool onf)
@@ -125,9 +146,9 @@ void rgb_update(void)
 
 void auto_control(void)
 {
-    state_control(4, true);
-    static int count = 3;
-    if (env_data.pm25 > 200)
+    state_control(AUTO_MODE, true);
+    int count = 3;
+    if (env_data.pm25 > 200) // 修改阈值
         count++;
     else
         count--;
@@ -159,7 +180,8 @@ void auto_control(void)
     }
     if (count)
         health = false;
-    rgb_update();
+    else
+        health = true;
 }
 
 bool fan_control(int fan_mode)
@@ -168,19 +190,45 @@ bool fan_control(int fan_mode)
         return false;
     switch (fan_mode)
     {
-    case 0:
+    case 3:
         auto_select = true;
+        state_control(MANUAL_MODE, false);
         auto_control();
+        return true;
+    case 0:
+        fan_set_mode(0);
         break;
     case 1:
-        fan_set_mode(0); /* fallthrough */
+        fan_set_mode(1);
+        break;
     case 2:
-        fan_set_mode(1); /* fallthrough */
-    case 3:
-        fan_set_mode(2); /* fallthrough */
+        fan_set_mode(2);
+        break;
     default:
-        auto_select = false;
         break;
     }
+    auto_select = false;
+    state_control(AUTO_MODE, false);
+    state_control(MANUAL_MODE, true);
     return true;
+}
+
+void error_check(void)
+{
+    if (env_data.temperature < 5 || env_data.humidity < 2)
+        state_control(SENSOR_DHT_FAULT, true);
+    else
+        state_control(SENSOR_DHT_FAULT, false);
+    if (env_data.pm25 == 0 || env_data.pm25 == 0.1)
+        state_control(SENSOR_PM25_FAULT, true);
+    else
+        state_control(SENSOR_PM25_FAULT, false);
+    if (env_data.co < 15.6 || env_data.co > 15.3|| env_data.co==0.1)
+        state_control(SENSOR_CO_FAULT, true);
+    else
+        state_control(SENSOR_CO_FAULT, false);
+    if (env_data.ch2o < 4.6 || env_data.ch2o > 3.3|| env_data.ch2o==0.1)
+        state_control(SENSOR_CH2O_FAULT, true);
+    else
+        state_control(SENSOR_CH2O_FAULT, false);
 }

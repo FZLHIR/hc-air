@@ -32,4 +32,5 @@ void state_control(SystemStatus state, bool onf);
 void state_set_init(void);
 void auto_control(void);
 bool fan_control(int fan_mode);
+char *get_data_upload(void);
 #endif /* DATA_H */

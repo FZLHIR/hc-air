@@ -8,6 +8,8 @@
 #include "data.h"
 #include "fan.h"
 #include "btn.h"
+#include "bafa.h"
+
 void app_main(void)
 {
     OLED_Init();
@@ -28,7 +30,9 @@ void app_main(void)
         static bool i = true;
         if (i)
         {
+            Wlan_Init();
             state_control(SYS_INIT, false);
+            xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
             i = false;
         }
     }

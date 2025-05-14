@@ -14,6 +14,7 @@ static EnvironmentalData env_data = {0};
 static bool auto_select = true;
 static bool health = true;
 static uint16_t active_states = 0;
+static char data_upload[64];
 
 void auto_control(void); // 定义在调用后方的函数要预声明
 void rgb_update(void);
@@ -186,8 +187,15 @@ void auto_control(void)
 
 bool fan_control(int fan_mode)
 {
-    if (fan_mode < 0 || fan_mode > 3)
+    if (fan_mode < 0 || fan_mode > 4)
         return false;
+    if (fan_mode == 4)
+    {
+        state_control(MANUAL_MODE, false);
+        state_control(REMOTE_CONTROL_MODE, true);
+        return true;
+    }
+
     switch (fan_mode)
     {
     case 3:
@@ -209,6 +217,7 @@ bool fan_control(int fan_mode)
     }
     auto_select = false;
     state_control(AUTO_MODE, false);
+    state_control(REMOTE_CONTROL_MODE, false);
     state_control(MANUAL_MODE, true);
     return true;
 }
@@ -223,12 +232,27 @@ void error_check(void)
         state_control(SENSOR_PM25_FAULT, true);
     else
         state_control(SENSOR_PM25_FAULT, false);
-    if (env_data.co < 15.6 || env_data.co > 15.3|| env_data.co==0.1)
+    if (env_data.co < 15.6 || env_data.co > 15.3 || env_data.co == 0.1)
         state_control(SENSOR_CO_FAULT, true);
     else
         state_control(SENSOR_CO_FAULT, false);
-    if (env_data.ch2o < 4.6 || env_data.ch2o > 3.3|| env_data.ch2o==0.1)
+    if (env_data.ch2o < 4.6 || env_data.ch2o > 3.3 || env_data.ch2o == 0.1)
         state_control(SENSOR_CH2O_FAULT, true);
     else
         state_control(SENSOR_CH2O_FAULT, false);
+}
+
+char *get_data_upload(void)
+{
+    char active_states_binary[5];
+
+    for (int i = 10; i > 6; i--)
+    {
+        active_states_binary[10 - i] = (active_states & (1 << i)) ? '1' : '0';
+    }
+    active_states_binary[4] = '\0'; // 添加字符串结束符
+
+    snprintf(data_upload, sizeof(data_upload), "%d#%.2f#%.2f#%.2f#%d#%d#%s",
+             env_data.fan_mode, env_data.pm25, env_data.co, env_data.ch2o, env_data.temperature, env_data.humidity, active_states_binary);
+    return data_upload;
 }

@@ -16,8 +16,8 @@
 #define STA_CONNECTED BIT2                     // sta连接成功标志位;
 #define Retry_BIT BIT3                         // 重试标志位
 #define CONNECTED BIT4                         // 连接成功标志位
-#define WIFI_SSID "HUAWEI-fengtaiyu"           // wifi名称
-#define WIFI_PASS "134679852"                  // wifi密码
+#define WIFI_SSID "JDCwifi_6328"           // wifi名称
+#define WIFI_PASS "20031022"                  // wifi密码
 #define WIFI_MAX_RETRY 5                       // wifi最大重试次数
 #define HOST_IP_ADDR "119.91.109.180"          // 主机地址
 #define PORT 8344                              // 端口号

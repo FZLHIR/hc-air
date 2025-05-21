@@ -4,11 +4,15 @@
 #include "esp_log.h"
 
 #include "driver/i2c_master.h"
+#include "driver/ledc.h"
+
+#define I2C_CONT 0
+#define FAN_PWM_GPIO 2
 
 static i2c_master_dev_handle_t fan_handle = NULL;
 static int fan_mode = 0;
 
-void fan_init(void)
+void fan_i2c_init(void)
 {
     ESP_LOGI("fan", "初始化 I2C 总线"); // 打印日志 在串口
     i2c_master_bus_handle_t i2c_bus = NULL;
@@ -36,29 +40,71 @@ void fan_init(void)
     ESP_ERROR_CHECK(i2c_master_transmit(fan_handle, cmd_buf, 2, -1));
 }
 
+void fan_direct_control(void)
+{
+    ledc_timer_config_t timer_cfg = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_4_BIT, //! 0~15
+        .timer_num = LEDC_TIMER_0,
+        .freq_hz = 25000,        // IDF自动计算div_num
+        .clk_cfg = LEDC_AUTO_CLK // 自动选择时钟源
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&timer_cfg));
+    uint32_t duty_max = ledc_find_suitable_duty_resolution(80 * 1000000, 25000);
+    ESP_LOGW("fan", "duty_max:%lu", duty_max);
+
+    // 2. 配置通道
+    ledc_channel_config_t ch_cfg = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_0,
+        .timer_sel = LEDC_TIMER_0,
+        .intr_type = LEDC_INTR_DISABLE,
+        .gpio_num = FAN_PWM_GPIO,
+        .duty = 7, // 初始占空比50%
+        .hpoint = 0};
+    ESP_ERROR_CHECK(ledc_channel_config(&ch_cfg));
+}
+
+void fan_init(void)
+{
+    if (I2C_CONT)
+        fan_i2c_init();
+    else
+        fan_direct_control();
+}
+
 void fan_set_mode(int mode)
 {
-    uint8_t cmd_buf[3];
-    cmd_buf[0] = 0x40;
-    cmd_buf[2] = 0x00;
-    switch (mode)
+    if (I2C_CONT)
     {
-    case 0:
-        cmd_buf[1] = 0x00;
-        break;
-    case 1:
-        cmd_buf[1] = 0x7f;
-        break;
-    case 2:
-        cmd_buf[1] = 0xFF;
-        break;
-    default:
-        break;
+        uint8_t cmd_buf[3];
+        cmd_buf[0] = 0x40;
+        cmd_buf[2] = 0x00;
+        switch (mode)
+        {
+        case 0:
+            cmd_buf[1] = 0x00;
+            break;
+        case 1:
+            cmd_buf[1] = 0x7f;
+            break;
+        case 2:
+            cmd_buf[1] = 0xFF;
+            break;
+        default:
+            break;
+        }
+        ESP_ERROR_CHECK(i2c_master_transmit(fan_handle, cmd_buf, 3, -1));
     }
-    ESP_ERROR_CHECK(i2c_master_transmit(fan_handle, cmd_buf, 3, -1));
+    else
+    {
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, mode * 7));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+    }
     ESP_LOGI("fan", "设置风扇模式 %d", mode);
     fan_mode = mode;
 }
+
 int fan_get_mode(void)
 {
     return fan_mode;

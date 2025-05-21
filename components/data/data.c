@@ -55,7 +55,7 @@ void data_comp(void)
     }
 }
 
-void state_control(SystemStatus state, bool onf)
+void state_control(SystemStatus state, bool onf)//枚举量写1 0的状态到十六位bit
 {
     uint16_t bit = 1 << state;
     if (onf)
@@ -126,8 +126,8 @@ void state_update(void *n)
 
 void state_set_init(void)
 {
-    // 初始化状态
-    esp_timer_create_args_t state_timer_args = {// 100ms定时器
+    // 状态初始化
+    esp_timer_create_args_t state_timer_args = {// 100ms定时
                                                 .callback = &state_update,
                                                 .name = "state_timer"};
     esp_timer_handle_t state_timer;
@@ -253,6 +253,6 @@ char *get_data_upload(void)
     active_states_binary[4] = '\0'; // 添加字符串结束符
 
     snprintf(data_upload, sizeof(data_upload), "%d#%.2f#%.2f#%.2f#%d#%d#%s",
-             env_data.fan_mode, env_data.pm25, env_data.co, env_data.ch2o, env_data.temperature, env_data.humidity, active_states_binary);
+             auto_select ? 4 : fan_get_mode() + 1, env_data.pm25 / 2, env_data.co / 10, env_data.ch2o / 20, env_data.temperature / 10, env_data.humidity / 10, active_states_binary);
     return data_upload;
 }

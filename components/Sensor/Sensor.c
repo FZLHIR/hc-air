@@ -96,7 +96,7 @@ float CO_get_data(void)
 
     float co = ppm(voltage[1]);
     vTaskDelay(pdMS_TO_TICKS(10));
-    if (co>999)
+    if (co > 999)
         co = 0.1;
     return co;
 }
@@ -109,7 +109,7 @@ float CH2O_get_data(void)
     ESP_LOGD(TAG, "CH2O 电压值: %d mV", voltage[2]);
     float ch2o = ppm(voltage[2]);
     vTaskDelay(pdMS_TO_TICKS(10));
-    if(ch2o>999)
+    if (ch2o > 999)
         ch2o = 0.1;
     return ch2o;
 }
@@ -131,16 +131,20 @@ void pm25_uart_init(void)
     ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, UART_PIN_NO_CHANGE, GPIO_NUM_1, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     ESP_ERROR_CHECK(uart_driver_install(UART_NUM_2, 256, 0, 0, NULL, 0));
 }
-
+static float last_pm;
 float pm25_get_data_uart(void)
 {
     uint8_t data[40] = {0};
     uart_read_bytes(UART_NUM_2, data, 32, 0);
     uint16_t pm25_raw = (data[12] << 8) | data[13];
+    // ESP_LOGW(TAG, "数据: %d", data);
     ESP_LOGW(TAG, "数据: %d", pm25_raw);
-    if (pm25_raw > 500||data[0]!= 0x42)
-        pm25_raw = 0.1;
-    return (float)pm25_raw;
+    if (pm25_raw < 500 || data[0] == 0x42)
+    {
+        
+        last_pm = pm25_raw;
+    }
+    return (float)last_pm;
 }
 
 int (*get_original_data(void))[4]
